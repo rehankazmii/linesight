@@ -1,0 +1,6 @@
+You are helping implement LineSight, a professional-grade factory quality dashboard
+for Apple Watch Ultra 2 FATP. Code must be clean, production-ready, and strongly typed.
+Follow the PRD summary in PRD_SUMMARY.md. Do not invent new entities or metrics unless I
+explicitly ask. Prefer clarity and straightforward architecture over clever tricks.
+When you generate or modify code, include all necessary imports and types so it compiles.
+Keep everything running 100% locally (no GitHub, no external services).

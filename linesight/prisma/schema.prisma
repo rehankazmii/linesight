@@ -1,0 +1,213 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider   = "prisma-client-js"
+  output     = "../src/generated/prisma"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum StepType {
+  ASSEMBLY
+  TEST
+  CALIBRATION
+  DEBUG
+  INSPECTION
+}
+
+enum ExecutionResult {
+  PASS
+  FAIL
+  SCRAP
+}
+
+enum CTQDirection {
+  TWO_SIDED
+  HIGHER_BETTER
+  LOWER_BETTER
+}
+
+enum EpisodeStatus {
+  OPEN
+  CLOSED
+  MONITORING
+}
+
+enum RootCauseCategory {
+  COMPONENT
+  FIXTURE
+  PROCESS
+  DESIGN
+  OPERATOR
+}
+
+enum EffectivenessTag {
+  EFFECTIVE
+  MIXED
+  INEFFECTIVE
+}
+
+model Unit {
+  id          Int              @id @default(autoincrement())
+  serial      String           @unique
+  kitId       Int?             @unique
+  finalResult ExecutionResult?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  kit        Kit?                   @relation("UnitKit", fields: [kitId], references: [id])
+  executions ProcessStepExecution[]
+
+  @@index([kitId])
+}
+
+model Kit {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  unit          Unit?             @relation("UnitKit")
+  componentLots KitComponentLot[]
+}
+
+model ComponentLot {
+  id            Int       @id @default(autoincrement())
+  lotNumber     String    @unique
+  componentName String
+  supplier      String?
+  receivedAt    DateTime?
+
+  kits KitComponentLot[]
+}
+
+model KitComponentLot {
+  kitId          Int
+  componentLotId Int
+  quantityUsed   Int?
+
+  kit          Kit          @relation(fields: [kitId], references: [id], onDelete: Cascade)
+  componentLot ComponentLot @relation(fields: [componentLotId], references: [id], onDelete: Cascade)
+
+  @@id([kitId, componentLotId])
+  @@index([componentLotId])
+}
+
+model ProcessStepDefinition {
+  id        Int      @id @default(autoincrement())
+  name      String
+  code      String   @unique
+  sequence  Int
+  stepType  StepType
+  canScrap  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ctqs                    CTQDefinition[]
+  executions              ProcessStepExecution[]
+  reworkTargets           ProcessStepDefinition[] @relation("StepReworkTargets")
+  reworkSources           ProcessStepDefinition[] @relation("StepReworkTargets")
+  failureOriginExecutions ProcessStepExecution[]  @relation("FailureOriginStep")
+}
+
+model ProcessStepExecution {
+  id                    Int              @id @default(autoincrement())
+  unitId                Int
+  stepDefinitionId      Int
+  stationCode           String
+  fixtureId             Int?
+  operatorId            String?
+  result                ExecutionResult
+  failureCode           String?
+  reworkLoopId          String?
+  originalFailureStepId Int?
+  originalFailureCode   String?
+  loopStartTime         DateTime?
+  loopEndTime           DateTime?
+  loopFinalOutcome      ExecutionResult?
+  startedAt             DateTime         @default(now())
+  completedAt           DateTime?
+
+  unit                Unit                   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  stepDefinition      ProcessStepDefinition  @relation(fields: [stepDefinitionId], references: [id], onDelete: Cascade)
+  fixture             Fixture?               @relation(fields: [fixtureId], references: [id])
+  originalFailureStep ProcessStepDefinition? @relation("FailureOriginStep", fields: [originalFailureStepId], references: [id])
+  measurements        Measurement[]
+
+  @@index([unitId])
+  @@index([stepDefinitionId])
+  @@index([fixtureId])
+  @@index([reworkLoopId])
+  @@index([originalFailureStepId])
+}
+
+model CTQDefinition {
+  id                      Int          @id @default(autoincrement())
+  code                    String?      @unique
+  processStepDefinitionId Int
+  name                    String
+  units                   String?
+  lowerSpecLimit          Float?
+  upperSpecLimit          Float?
+  target                  Float?
+  isCritical              Boolean      @default(false)
+  direction               CTQDirection
+  createdAt               DateTime     @default(now())
+
+  processStepDefinition ProcessStepDefinition @relation(fields: [processStepDefinitionId], references: [id], onDelete: Cascade)
+  measurements          Measurement[]
+
+  @@index([processStepDefinitionId])
+}
+
+model Measurement {
+  id                     Int      @id @default(autoincrement())
+  processStepExecutionId Int
+  ctqDefinitionId        Int
+  value                  Float
+  rawData                Json?
+  recordedAt             DateTime @default(now())
+
+  processStepExecution ProcessStepExecution @relation(fields: [processStepExecutionId], references: [id], onDelete: Cascade)
+  ctqDefinition        CTQDefinition        @relation(fields: [ctqDefinitionId], references: [id], onDelete: Cascade)
+
+  @@index([processStepExecutionId])
+  @@index([ctqDefinitionId])
+}
+
+model Fixture {
+  id               Int       @id @default(autoincrement())
+  code             String    @unique
+  fixtureType      String
+  stationCode      String
+  status           String
+  lastCalibratedAt DateTime?
+  calibrationDueAt DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  executions ProcessStepExecution[]
+}
+
+model Episode {
+  id                Int               @id @default(autoincrement())
+  title             String
+  summary           String
+  status            EpisodeStatus
+  rootCauseCategory RootCauseCategory
+  effectivenessTag  EffectivenessTag
+  startedAt         DateTime
+  endedAt           DateTime?
+  affectedSteps     Json?
+  affectedCtqs      Json?
+  affectedLots      Json?
+  beforeMetrics     Json?
+  afterMetrics      Json?
+  externalLinks     Json?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+}
