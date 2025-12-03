@@ -2,14 +2,15 @@
   "name": "linesight",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
+    "scripts": {
     "dev": "next dev",
-    "build": "node -e \"require('fs').mkdirSync('src/generated/prisma/runtime',{recursive:true})\" && npm run prisma:generate &&
-  NEXT_FORCE_WEBPACK=1 NEXT_USE_TURBOPACK=0 next build",
+    "build": "node -e \"require('fs').mkdirSync('src/generated/prisma/runtime',{recursive:true})\" && npm run prisma:generate && NEXT_FORCE_WEBPACK=1 NEXT_USE_TURBOPACK=0 next build",
     "start": "next start",
     "lint": "eslint",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma"
-  }
+  },
+
+  
   "dependencies": {
     "@libsql/client": "0.8.1",
     "@prisma/adapter-libsql": "^7.0.1",
